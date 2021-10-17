@@ -2,58 +2,16 @@ import datetime
 import json
 import os
 import time
-from json import JSONDecodeError
-import requests
 from lxml import html
 import logging
 
-import telebot
 from progress.bar import IncrementalBar
 
+from helper import http_request, Comic, get_comic_dir, save_json, get_currency, is_scanned_comic, init
 
-def init_dir():
-    os.makedirs(f'{os.getcwd()}/data/log', exist_ok=True)
-    os.makedirs(f'{os.getcwd()}/data/comics/scanned', exist_ok=True)
-    os.makedirs(f'{os.getcwd()}/data/comics/done', exist_ok=True)
+init()
 
-
-init_dir()
-logging.basicConfig(filename='data/log/{:%Y-%m}.log'.format(datetime.datetime.now()),
-                    filemode='a',
-                    format='%(asctime)s %(name)s %(levelname)s %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
-logging.info("Running Logging!!!")
 CONFIG = json.load(open('config.json'))
-bot = telebot.TeleBot(CONFIG['tel_bot_token'])
-
-
-class ComicsEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Comic):
-            return obj.__dict__
-        return json.JSONEncoder.default(self, obj)
-
-
-class Comic(object):
-    """
-    The Comic object contains information about parsed ad
-    """
-
-    def __init__(self, _id: str = None, url: str = None, title: str = None, publisher: str = None,
-                 image_url: str = None, description: str = None):
-        self.id = _id
-        self.url = url
-        self.title = title
-        self.publisher = publisher
-        self.description = description
-        self.image_url = image_url
-        self.writer = None
-        self.artist = None
-        self.price_grn = None
-        self.price_usd = None
-        self.expected_ship_at = None
-        self.created_at = datetime.datetime.now().__str__()
 
 
 class Parser:
@@ -70,84 +28,9 @@ class Parser:
         save_json(comic, f'{get_comic_dir(comic)}/{sub_dir}/{comic.id}.json')
 
 
-def http_request(url: str, cookies=None):
-    if cookies is not None:
-        response_inst = requests.session().get(url=url, cookies=cookies)
-    else:
-        response_inst = requests.get(url=url)
-    response_inst.encoding = 'UTF-8'
-    try:
-        response = response_inst.json()
-    except JSONDecodeError:
-        response = response_inst.text
-    log_msg = {
-        'url': url,
-        'status_code': response_inst.status_code,
-        # 'headers': response_inst.headers,
-        # 'content': response,
-    }
-    # print(log_msg)
-    logging.info(log_msg)
-    return response
-
-
-def get_currency():
-    api_url = 'https://api.privatbank.ua/p24api/pubinfo?json&exchange&coursid=5'
-    for currency in http_request(api_url):
-        if currency['ccy'] == 'USD':
-            return float(currency['sale'])
-    return None
-
-
-def get_comic_dir(comic: Comic):
-    period = datetime.datetime.now().strftime('%Y-%m')
-    publisher = comic.publisher.lower().replace("!", "").replace(" ", "_")
-    return f'{os.getcwd()}/data/comics/scanned/{period}/{publisher}'
-
-
-def save_json(data, file_path: str):
-    file_dir = os.path.dirname(file_path)
-    os.makedirs(file_dir, exist_ok=True)
-    with open(file_path, 'w+', encoding='utf-8') as file:
-        json.dump(data, file, cls=ComicsEncoder)
-
-
-def send_telegram_msg(msg: str, img_url=None):
-    # bot.send_message(CONFIG['telegram_group_id'], msg,parse_mode=ParseMode.HTML)
-    if img_url is not None:
-        bot.send_photo(
-            CONFIG['telegram_group_id'],
-            caption=msg,
-            photo=get_img(img_url),
-            parse_mode='HTML'
-        )
-    logging.info(f'In Telegram send message: {msg}.')
-
-
-def send_comic_in_group(comic: Comic):
-    msg = f'<b>{comic.title}</b>\n'
-    if comic.description:
-        msg += f'{comic.description}\n'
-    if comic.writer:
-        msg += f'Writer: {comic.writer}\n'
-    if comic.artist:
-        msg += f'Artist: {comic.artist}\n'
-    msg += f'Expected Ship Date: <b>{comic.expected_ship_at}</b>\n'
-    msg += f'Вартість: <b>{comic.price_grn}</b> грн'
-    send_telegram_msg(msg, comic.image_url)
-
-
 def update_price(comic: Comic, exchange_usd):
     extra = 150.00
     comic.price_grn = round(comic.price_usd * exchange_usd + extra)
-
-
-def get_img(url: str):
-    response = requests.get(url, stream=True)
-    if response.status_code == 200:
-        response.raw.decode_content = True
-        return response.raw.read()
-    return None
 
 
 def update_comic_detail(comic: Comic):
@@ -172,16 +55,18 @@ def update_comic_detail(comic: Comic):
             comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%Y-%m-%d')
 
 
-def get_comic(comic_block, publisher: str):
+def get_comic(comic_block, publisher: str) -> Comic:
     img_block = comic_block.findall('div')
     img_div = img_block[0]
     if img_div.get('class') != 'thumbnailborder':
-        logging.error(f'DOM changed on list of comic.')
-        return None
+        msg = f'DOM changed on list of comic.'
+        logging.error(msg)
+        raise Exception(msg)
     detail_div = img_block[1]
     if detail_div.get('class') != 'detail':
-        logging.error(f'DOM changed on list of comic.')
-        return None
+        msg = f'DOM changed on list of comic.'
+        logging.error(msg)
+        raise Exception(msg)
     tag_a = img_div.find('div').find('div').find('a')
     img_url = str(tag_a.find('img').get('src')).replace('/small/', '/xlarge/', 1)
     if 'noimagethumb' in img_url:
@@ -189,17 +74,6 @@ def get_comic(comic_block, publisher: str):
     return Comic(tag_a.get('href').split('/')[2], CONFIG['site_url'] + tag_a.get('href'),
                  detail_div.find('div').find('h5').find('a').text.strip(),
                  publisher, img_url)
-
-
-def comic_is_scanned(comic: Comic) -> bool:
-    path_comic_dir = get_comic_dir(comic)
-    if os.path.exists(f'{path_comic_dir}/full/{comic.id}.json'):
-        return True
-    if os.path.exists(f'{path_comic_dir}/w_img/{comic.id}.json'):
-        return True
-    if os.path.exists(f'{os.getcwd()}/data/comics/done/{comic.id}.json'):
-        return True
-    return False
 
 
 def handler_publisher_comics(params: dict, parser_result: Parser, exchange_usd, page=1):
@@ -219,7 +93,7 @@ def handler_publisher_comics(params: dict, parser_result: Parser, exchange_usd, 
         if ' Copy ' in comic.title:
             logging.info(f'`Copy` not ignored. title:{comic.title}')
             continue
-        if comic_is_scanned(comic) is True:
+        if is_scanned_comic(comic) is True:
             logging.info(f'This comic has already been scanned.Id={comic.id}')
             continue
         update_comic_detail(comic)
@@ -235,7 +109,7 @@ def handler_publisher_comics(params: dict, parser_result: Parser, exchange_usd, 
     return handler_publisher_comics(params, parser_result, exchange_usd, page)
 
 
-def get_list_publisher():
+def get_publisher_list():
     publishers = []
     html_home_page = http_request(CONFIG['site_url'])
     root = html.fromstring(html_home_page)
@@ -245,7 +119,8 @@ def get_list_publisher():
         if name in CONFIG['ignore_publishers']:
             print('ignore_publishers=' + name)
             continue
-        publishers.append({'url': CONFIG['site_url'] + el_publisher.get('href'), 'name': name})
+        publishers.append({'url': CONFIG['site_url'] + el_publisher.get('href'), 'name': name,
+                           'key': name.lower().replace('!', '').replace(' ', '_'), 'comics_url': []})
     return publishers
 
 
@@ -259,7 +134,8 @@ def run():
     # exit()
     print('START PARSE')
     # msg = 'TEST msg with IMG'
-    publishers = get_list_publisher()
+    publishers = get_publisher_list()
+    save_json(publishers, f'{os.getcwd()}/data/comics/publishers-{datetime.datetime.now().strftime("%Y-%m")}.json')
     result = Parser()
     exchange_usd = get_currency()
     for publisher in publishers:

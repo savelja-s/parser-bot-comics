@@ -139,8 +139,19 @@ def send_comic_in_group(comic: Comic):
 
 
 def update_price(comic: Comic, exchange_usd):
-    extra = 150.00
-    comic.price_grn = round(comic.price_usd * exchange_usd + extra)
+    if comic.price_usd <= 3:
+        extra_percent = 95
+    elif 3 < comic.price_usd < 5:
+        extra_percent = 75
+    elif 5 < comic.price_usd < 8:
+        extra_percent = 55
+    elif 8 < comic.price_usd < 10:
+        extra_percent = 35
+    else:
+        extra_percent = 10
+    extra_price = (comic.price_usd * extra_percent) / 100
+    price_grn = (comic.price_usd + extra_price) * exchange_usd
+    comic.price_grn = round(price_grn / 10) * 10
 
 
 def get_img(url: str):

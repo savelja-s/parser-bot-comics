@@ -101,13 +101,14 @@ def get_currency():
 
 def get_comic_dir(comic: Comic):
     period = datetime.datetime.now().strftime('%Y-%m')
-    publisher = comic.publisher.lower().replace("!", "").replace(" ", "_")
+    publisher = comic.publisher.lower().replace('!', '').replace(' ', '_')
     return f'{os.getcwd()}/data/comics/scanned/{period}/{publisher}'
 
 
 def save_json(data, file_path: str):
     file_dir = os.path.dirname(file_path)
-    os.makedirs(file_dir, exist_ok=True)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
     with open(file_path, 'w+', encoding='utf-8') as file:
         json.dump(data, file, cls=ComicsEncoder)
 
@@ -183,19 +184,23 @@ def get_comic(comic_block, publisher: str):
         logging.error(f'DOM changed on list of comic.')
         return None
     tag_a = img_div.find('div').find('div').find('a')
-    img_url = str(tag_a.find('img').get('src')).replace('/small/', '/xlarge/', 1)
+    img_url = str(tag_a.find('img').get('src'))
     if 'noimagethumb' in img_url:
         img_url = None
+    else:
+        img_url = img_url.replace('/small/', '/xlarge/', 1)
     return Comic(tag_a.get('href').split('/')[2], CONFIG['site_url'] + tag_a.get('href'),
                  detail_div.find('div').find('h5').find('a').text.strip(),
                  publisher, img_url)
 
 
-def comic_is_scanned(comic: Comic) -> bool:
+def is_scanned_comic(comic: Comic) -> bool:
     path_comic_dir = get_comic_dir(comic)
     if os.path.exists(f'{path_comic_dir}/full/{comic.id}.json'):
         return True
     if os.path.exists(f'{path_comic_dir}/w_img/{comic.id}.json'):
+        return True
+    if os.path.exists(f'{path_comic_dir}/souvenirs/{comic.id}.json'):
         return True
     if os.path.exists(f'{os.getcwd()}/data/comics/done/{comic.id}.json'):
         return True
@@ -207,9 +212,7 @@ def handler_publisher_comics(params: dict, parser_result: Parser, exchange_usd, 
     if page != 1: page_path += f'/{page}'
     html_page = http_request(page_path, {'ProductsPerPage': '100'})
     root = html.fromstring(html_page)
-
     if root.xpath('//div[@id="body"]//div[@class="message-info"]'):
-        print('END PUBLISHER COMICS')
         return parser_result
     comic_blocks = root.xpath('//ul[@class="thumblist"]/li')
     bar = IncrementalBar(f"{params['name'].upper()} page - {page}", max=len(comic_blocks))
@@ -219,13 +222,17 @@ def handler_publisher_comics(params: dict, parser_result: Parser, exchange_usd, 
         if ' Copy ' in comic.title:
             logging.info(f'`Copy` not ignored. title:{comic.title}')
             continue
-        if comic_is_scanned(comic) is True:
+        if is_scanned_comic(comic) is True:
             logging.info(f'This comic has already been scanned.Id={comic.id}')
+            continue
+        if comic.image_url is None:
+            parser_result.add_and_save_comic(comic)
             continue
         update_comic_detail(comic)
         if comic.publisher == 'Marvel Comics':
             pass
         elif not comic.writer and not comic.artist:
+            save_json(comic, f'{get_comic_dir(comic)}/souvenirs/{comic.id}.json')
             logging.info(f'Souvenir not ignored.writer:{comic.writer},artist:{comic.artist}')
             continue
         update_price(comic, exchange_usd)

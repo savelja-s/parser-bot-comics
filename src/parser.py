@@ -268,21 +268,15 @@ def get_list_publisher():
 
 
 def run():
-    # print('_get_bank_api', get_currency())
-    # send_telegram_msg('SAV', 'https://media.dcbservice.com/xlarge/OCT210674.jpg')
-    # file = '/app/data/comics/scanned/2021-10/boom_studios/full/oct210728.json'
-    # d = os.path.dirname(file)  ## directory of file
-    # s = os.path.dirname(os.path.dirname(file))
     # print(d,s)
     # exit()
-    print('START PARSE')
-    # msg = 'TEST msg with IMG'
     publishers = get_list_publisher()
     result = Parser()
     exchange_usd = get_currency()
     for publisher in publishers:
+        start_time_parse = time.time()
         handler_publisher_comics(publisher, result, exchange_usd)
-        print('COMPLETE ONE PUBLISHER - ', publisher['name'].upper())
+        print('PARSED PUBLISHER - ', publisher['name'].upper(), 'Time(s):', round(time.time() - start_time_parse), 2)
 
 
 start_time = time.time()

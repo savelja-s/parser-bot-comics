@@ -142,7 +142,10 @@ def send_telegram_msg(msg: str, img_url=None):
 def send_comic_in_group(comic: Comic):
     msg = f'<b>{comic.title}</b>\n  \n'
     if comic.description:
-        msg += comic.description + '  \n' if len(comic.description) < 800 else f'{comic.description[0:800]}...  \n'
+        if len(comic.description) < 800:
+            msg += comic.description + '  \n  \n'
+        else:
+            f'{comic.description[0:800]}...  \n  \n'
     if comic.writer:
         msg += f'<b>Writer</b>: {comic.writer}\n'
     if comic.artist:

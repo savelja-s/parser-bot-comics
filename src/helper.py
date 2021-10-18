@@ -140,15 +140,15 @@ def send_telegram_msg(msg: str, img_url=None):
 
 
 def send_comic_in_group(comic: Comic):
-    msg = f'<b>{comic.title}</b>\n'
+    msg = f'<b>{comic.title}</b>\n  \n'
     if comic.description:
-        msg += comic.description if len(comic.description) < 800 else f'{comic.description[0:800]}...\n'
+        msg += comic.description + '  \n' if len(comic.description) < 800 else f'{comic.description[0:800]}...  \n'
     if comic.writer:
-        msg += f'Writer: {comic.writer}\n'
+        msg += f'<b>Writer</b>: {comic.writer}\n'
     if comic.artist:
-        msg += f'Artist: {comic.artist}\n'
-    msg += f'Expected Ship Date: <b>{comic.expected_ship_at}</b>\n'
-    msg += f'Вартість: <b>{comic.price_grn}</b> грн'
+        msg += f'<b>Artist</b>: {comic.artist}\n'
+    msg += f'<b>Expected Ship Date</b>: {comic.expected_ship_at}\n'
+    msg += f'<b>Вартість</b>: {comic.price_grn} грн'
     return bot.send_photo(CONFIG['telegram_group_id'], caption=msg, photo=get_img(comic.image_url), parse_mode='HTML')
 
 
@@ -193,7 +193,7 @@ def update_comic(comic: Comic, parser: HtmlParser = None):
         if key == 'artist':
             comic.artist = value
         if key == 'expected_ship_date':
-            comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%Y-%m-%d')
+            comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%d/%m/%y')
 
 
 def is_scanned_comic(comic: Comic) -> bool:

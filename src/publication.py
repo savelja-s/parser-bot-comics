@@ -5,7 +5,7 @@ from progress.bar import IncrementalBar
 from helper import read_scanned_comics, save_json, send_comic_in_group
 
 
-def run(limit: int = 5):
+def run(limit: int = 10):
     count = 0
     bar = IncrementalBar('Check if upload images for comics.', max=limit)
     for comic in read_scanned_comics('full'):

@@ -140,15 +140,18 @@ def send_telegram_msg(msg: str, img_url=None):
 
 
 def send_comic_in_group(comic: Comic):
-    msg = f'<b>{comic.title}</b>\n'
+    msg = f'<b>{comic.title}</b>\n  \n'
     if comic.description:
-        msg += comic.description if len(comic.description) < 800 else f'{comic.description[0:800]}...\n'
+        if len(comic.description) < 800:
+            msg += comic.description + '  \n  \n'
+        else:
+            f'{comic.description[0:800]}...  \n  \n'
     if comic.writer:
-        msg += f'Writer: {comic.writer}\n'
+        msg += f'<b>Writer</b>: {comic.writer}\n'
     if comic.artist:
-        msg += f'Artist: {comic.artist}\n'
-    msg += f'Expected Ship Date: <b>{comic.expected_ship_at}</b>\n'
-    msg += f'Вартість: <b>{comic.price_grn}</b> грн'
+        msg += f'<b>Artist</b>: {comic.artist}\n'
+    msg += f'<b>Expected Ship Date</b>: {comic.expected_ship_at}\n'
+    msg += f'<b>Вартість</b>: {comic.price_grn} грн'
     return bot.send_photo(CONFIG['telegram_group_id'], caption=msg, photo=get_img(comic.image_url), parse_mode='HTML')
 
 
@@ -161,16 +164,30 @@ def get_img(url: str):
 
 
 def update_price(comic: Comic, exchange_usd: float):
+    # (0.01—3$) + 95 %
+    # (3.01—4.99$) + 65 %
+    # (5—7.99$) + 45 %
+    # (8—9.99$) + 35 %
+    # (10—24.99$) + 25 %
+    # (25—49.99$) + 20 %
+    # (50 - 100$) + 12 %
+    # (100.01—...) + 7 %
     if comic.price_usd <= 3:
         extra_percent = 95
     elif 3 < comic.price_usd < 5:
-        extra_percent = 75
+        extra_percent = 65
     elif 5 < comic.price_usd < 8:
-        extra_percent = 55
+        extra_percent = 45
     elif 8 < comic.price_usd < 10:
         extra_percent = 35
+    elif 10 < comic.price_usd < 25:
+        extra_percent = 25
+    elif 25 < comic.price_usd < 50:
+        extra_percent = 20
+    elif 50 < comic.price_usd < 100:
+        extra_percent = 12
     else:
-        extra_percent = 10
+        extra_percent = 7
     extra_price = (comic.price_usd * extra_percent) / 100
     price_grn = (comic.price_usd + extra_price) * exchange_usd
     comic.price_grn = round(price_grn / 10) * 10
@@ -193,7 +210,7 @@ def update_comic(comic: Comic, parser: HtmlParser = None):
         if key == 'artist':
             comic.artist = value
         if key == 'expected_ship_date':
-            comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%Y-%m-%d')
+            comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%d/%m/%y')
 
 
 def is_scanned_comic(comic: Comic) -> bool:

@@ -10,7 +10,7 @@ from lxml.html import HtmlElement
 from typing import List, Optional
 import requests
 
-CONFIG = json.load(open('config.json'))
+CONFIG = json.load(open('config/config.json'))
 bot = telebot.TeleBot(CONFIG['tel_bot_token'])
 
 
@@ -228,18 +228,17 @@ def is_scanned_comic(comic: Comic) -> bool:
 
 
 def read_scanned_comics(sub_dir: str = 'full'):
-    period = datetime.datetime.now().strftime('%Y-%m')
-    root_dir = f'{os.getcwd()}/var/comics/scanned/{period}'
-    lsd = os.listdir(root_dir)
-    lsd.sort()
+    root_dir = f'{os.getcwd()}/var/comics/scanned/{datetime.datetime.now().strftime("%Y-%m")}'
     publishers_dirs = ['boom_studios', 'dark_horse', 'dynamite_entertainment', 'idw_publishing', 'image_comics',
                        'dc_comics', 'marvel_comics']
     for publisher_dir_name in publishers_dirs:
-        publisher_dir = os.path.join(root_dir, publisher_dir_name)
-        publisher_dir_sub_dir = os.path.join(publisher_dir, sub_dir)
-        for file in sorted(os.listdir(publisher_dir_sub_dir)):
-            file_path = f'{publisher_dir_sub_dir}/{file}'
-            if not os.path.isfile(file_path) | (not file.endswith('.json')):
-                continue
-            comic = Comic(json.load(open(file_path)))
+        publisher_dir_sub_dir = os.path.join(root_dir, publisher_dir_name, sub_dir)
+        files = []
+        for file in os.listdir(publisher_dir_sub_dir):
+            file_path = os.path.join(publisher_dir_sub_dir, file)
+            if file.endswith('.json') and os.path.isfile(file_path):
+                files.append(file_path)
+        files.sort(key=lambda x: json.load(open(x))['title'])
+        for file in files:
+            comic = Comic(json.load(open(file)))
             yield comic

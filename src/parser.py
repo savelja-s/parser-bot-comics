@@ -4,11 +4,11 @@ import logging
 
 from progress.bar import IncrementalBar
 
-from helper import http_request, init_log_and_dir, Comic, save_json, get_currency, update_price, is_scanned_comic, \
-    update_comic, HtmlParser
+from helper import init_log_and_dir, Comic, save_json, get_currency, update_price, is_scanned_comic, update_comic, \
+    HtmlParser
 
 init_log_and_dir()
-CONFIG = json.load(open('config.json'))
+CONFIG = json.load(open('config/config.json'))
 
 
 def get_comic(comic_block, publisher: str):
@@ -34,7 +34,8 @@ def get_comic(comic_block, publisher: str):
 
 def handler_publisher_comics(params: dict, exchange_usd, page=1):
     page_path = params["url"]
-    if page != 1: page_path += f'/{page}'
+    if page != 1:
+        page_path += f'/{page}'
     parser = HtmlParser(page_path, {'ProductsPerPage': '100'})
     if parser.find_by_xpath('//div[@id="body"]//div[@class="message-info"]'):
         return

@@ -139,4 +139,5 @@ dmypy.json
 cython_debug/
 var
 .idea
-config.json
+config/config.json
+config/google_credentials.json

@@ -146,6 +146,7 @@ def send_comic_in_group(comic: Comic):
             msg += comic.description + '  \n  \n'
         else:
             f'{comic.description[0:800]}...  \n  \n'
+    msg += f'<b>Publisher</b>: {comic.publisher}\n'
     if comic.writer:
         msg += f'<b>Writer</b>: {comic.writer}\n'
     if comic.artist:
@@ -229,14 +230,15 @@ def is_scanned_comic(comic: Comic) -> bool:
 def read_scanned_comics(sub_dir: str = 'full'):
     period = datetime.datetime.now().strftime('%Y-%m')
     root_dir = f'{os.getcwd()}/var/comics/scanned/{period}'
-    for publisher_dir_name in os.listdir(root_dir):
+    lsd = os.listdir(root_dir)
+    lsd.sort()
+    publishers_dirs = ['boom_studios', 'dark_horse', 'dynamite_entertainment', 'idw_publishing', 'image_comics',
+                       'dc_comics', 'marvel_comics']
+    for publisher_dir_name in publishers_dirs:
         publisher_dir = os.path.join(root_dir, publisher_dir_name)
-        if not os.path.isdir(publisher_dir):
-            continue
-        publisher_dir_w_img = f'{publisher_dir}/{sub_dir}'
-        file_list = os.listdir(publisher_dir_w_img)
-        for file in file_list:
-            file_path = f'{publisher_dir_w_img}/{file}'
+        publisher_dir_sub_dir = os.path.join(publisher_dir, sub_dir)
+        for file in sorted(os.listdir(publisher_dir_sub_dir)):
+            file_path = f'{publisher_dir_sub_dir}/{file}'
             if not os.path.isfile(file_path) | (not file.endswith('.json')):
                 continue
             comic = Comic(json.load(open(file_path)))

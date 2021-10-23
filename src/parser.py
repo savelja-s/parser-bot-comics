@@ -3,11 +3,12 @@ import json
 import time
 import logging
 
+from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
 
 from helper import init_log_and_dir, Comic, save_json, get_currency, update_price, is_scanned_comic, update_comic, \
     HtmlParser
-from spreadsheets import insert_in_sheet
+from spreadsheets import insert_in_sheet, create_sheet
 
 init_log_and_dir()
 CONFIG = json.load(open('config/config.json'))
@@ -88,6 +89,11 @@ def get_list_publisher():
 def run():
     publishers = get_list_publisher()
     exchange_usd = get_currency()
+    sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
+    try:
+        create_sheet(sheet_title)
+    except HttpError:
+        print(f'Sheet with title {sheet_title} exists.')
     for publisher in publishers:
         start_time_parse = time.time()
         handler_publisher_comics(publisher, exchange_usd)

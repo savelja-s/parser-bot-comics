@@ -2,10 +2,12 @@ import datetime
 import logging
 import os
 import time
+
+from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
 from helper import init_log_and_dir, Comic, save_json, update_comic, get_currency, update_price, HtmlParser, \
     read_scanned_comics
-from spreadsheets import insert_in_sheet
+from spreadsheets import insert_in_sheet, create_sheet
 
 init_log_and_dir()
 
@@ -23,6 +25,11 @@ def run():
     updated_count = 0
     file_list = [i for i in read_scanned_comics('w_img') if i is not None]
     bar = IncrementalBar('Check if upload images for comics.', max=len(file_list))
+    sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_upload_img'
+    try:
+        create_sheet(sheet_title)
+    except HttpError:
+        print(f'Sheet with title {sheet_title} exists.')
     for comic in file_list:
         parser = HtmlParser(comic.url)
         img_src = parser.find_one_by_xpath('//div[@class="detailimagecol"]/img').get('src')
@@ -36,7 +43,7 @@ def run():
             logging.info(f'Uploaded image for comic with id {comic.id} and json move to {new_path}.')
             one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
                        comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
-            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_upload_img', [one_row])
+            insert_in_sheet(sheet_title, [one_row])
             os.remove(comic.scanned_w_img_file_path())
         bar.next()
     bar.finish()

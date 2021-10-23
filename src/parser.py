@@ -55,8 +55,7 @@ def handler_publisher_comics(params: dict, exchange_usd, page=1):
             continue
         if comic.image_url is None:
             save_json(comic, comic.scanned_w_img_file_path())
-            one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
-                       comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
+            one_row = [comic.publisher, comic.title, comic.id, comic.url, comic.created_at]
             insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', [one_row])
             continue
         update_comic(comic)

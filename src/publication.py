@@ -1,12 +1,15 @@
 import datetime
+import logging
 import os
 import time
 
 from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
 
-from helper import read_scanned_comics, save_json, send_comic_in_group
-from spreadsheets import create_sheet, insert
+from helper import read_scanned_comics, save_json, send_comic_in_group, init_log_and_dir
+from spreadsheets import create_sheet, insert_in_sheet
+
+init_log_and_dir()
 
 
 def run(limit: int = 10):
@@ -21,10 +24,14 @@ def run(limit: int = 10):
         if count == limit:
             return
         send_comic_in_group(comic)
+        logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
         one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
                    comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
-        insert([one_row])
+        insert_in_sheet(datetime.datetime.now().strftime('%Y-%m'), [one_row])
         save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
+        logging.info(
+            f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'
+        )
         os.remove(comic.scanned_full_file_path())
         count = count + 1
         bar.next()

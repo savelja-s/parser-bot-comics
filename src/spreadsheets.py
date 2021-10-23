@@ -64,10 +64,10 @@ def create_sheet(title: str):
         }).execute()
 
 
-def insert(values: list):
+def insert_in_sheet(title: str, values: list):
     return get_sheets_service().spreadsheets().values().append(
         spreadsheetId=CONFIG['spreadsheet_id'],
-        range=f"{datetime.datetime.now().strftime('%Y-%m')}!A:Z",
+        range=f"{title}!A:Z",
         valueInputOption="USER_ENTERED",
         body={"majorDimension": "ROWS", "values": values},
     ).execute()

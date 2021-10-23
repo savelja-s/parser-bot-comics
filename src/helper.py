@@ -47,8 +47,8 @@ class Comic(object):
     def scanned_w_img_file_path(self) -> Optional[str]:
         return f'{get_comic_dir(self)}/w_img/{self.id}.json'
 
-    def scanned_souvenirs_file_path(self) -> Optional[str]:
-        return f'{get_comic_dir(self)}/souvenirs/{self.id}.json'
+    # def scanned_souvenirs_file_path(self) -> Optional[str]:
+    #     return f'{get_comic_dir(self)}/souvenirs/{self.id}.json'
 
 
 class HtmlParser(object):
@@ -192,6 +192,8 @@ def update_price(comic: Comic, exchange_usd: float):
     extra_price = (comic.price_usd * extra_percent) / 100
     price_grn = (comic.price_usd + extra_price) * exchange_usd
     comic.price_grn = round(price_grn / 10) * 10
+    if comic.price_grn < 100:
+        comic.price_grn = 100
 
 
 def update_comic(comic: Comic, parser: HtmlParser = None):
@@ -204,12 +206,15 @@ def update_comic(comic: Comic, parser: HtmlParser = None):
     comic.image_url = parser.find_one_by_xpath('//div[@class="detailimagecol"]/img').get('src')
     for li in parser.find_by_xpath('//ul[@class="meta"]/li'):
         line = li.text.split(': ')
-        key = line[0].strip().lower().replace(' ', '_')
+        key = line[0].strip().lower().replace(' ', '_').replace('/', '_')
         value = line[1].strip()
         if key == 'writer':
             comic.writer = value
         if key == 'artist':
             comic.artist = value
+        if key == 'writer_artist':
+            comic.artist = value
+            comic.writer = value
         if key == 'expected_ship_date':
             comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%d/%m/%y')
 
@@ -234,11 +239,14 @@ def read_scanned_comics(sub_dir: str = 'full'):
     for publisher_dir_name in publishers_dirs:
         publisher_dir_sub_dir = os.path.join(root_dir, publisher_dir_name, sub_dir)
         files = []
-        for file in os.listdir(publisher_dir_sub_dir):
-            file_path = os.path.join(publisher_dir_sub_dir, file)
-            if file.endswith('.json') and os.path.isfile(file_path):
-                files.append(file_path)
-        files.sort(key=lambda x: json.load(open(x))['title'])
-        for file in files:
-            comic = Comic(json.load(open(file)))
-            yield comic
+        if not os.path.exists(publisher_dir_sub_dir):
+            yield None
+        else:
+            for file in os.listdir(publisher_dir_sub_dir):
+                file_path = os.path.join(publisher_dir_sub_dir, file)
+                if file.endswith('.json') and os.path.isfile(file_path):
+                    files.append(file_path)
+            files.sort(key=lambda x: json.load(open(x))['title'])
+            for file in files:
+                comic = Comic(json.load(open(file)))
+                yield comic

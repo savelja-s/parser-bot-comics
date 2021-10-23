@@ -1,3 +1,4 @@
+import datetime
 import json
 import time
 import logging
@@ -6,6 +7,7 @@ from progress.bar import IncrementalBar
 
 from helper import init_log_and_dir, Comic, save_json, get_currency, update_price, is_scanned_comic, update_comic, \
     HtmlParser
+from spreadsheets import insert_in_sheet
 
 init_log_and_dir()
 CONFIG = json.load(open('config/config.json'))
@@ -52,15 +54,19 @@ def handler_publisher_comics(params: dict, exchange_usd, page=1):
             continue
         if comic.image_url is None:
             save_json(comic, comic.scanned_w_img_file_path())
+            one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
+                       comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
+            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', [one_row])
             continue
         update_comic(comic)
-        if comic.publisher == 'Marvel Comics':
-            pass
-        elif not comic.writer and not comic.artist:
-            save_json(comic, comic.scanned_souvenirs_file_path())
-            logging.info(f'Souvenir not ignored.writer:{comic.writer},artist:{comic.artist}')
-            continue
+        # if comic.publisher == 'Marvel Comics':
+        #     pass
+        # elif not comic.writer and not comic.artist:
+        #     save_json(comic, comic.scanned_souvenirs_file_path())
+        #     logging.info(f'Souvenir not ignored.writer:{comic.writer},artist:{comic.artist}')
+        #     continue
         update_price(comic, exchange_usd)
+        logging.info(f'Save comic with title:{comic.title} and id:{comic.id}')
         save_json(comic, comic.scanned_full_file_path())
     bar.finish()
     handler_publisher_comics(params, exchange_usd, (page + 1))
@@ -85,7 +91,12 @@ def run():
     for publisher in publishers:
         start_time_parse = time.time()
         handler_publisher_comics(publisher, exchange_usd)
-        print('PARSED PUBLISHER - ', publisher['name'].upper(), 'Time(s):', round((time.time() - start_time_parse), 2))
+        print(
+            f'{datetime.datetime.now().strftime("%Y-%m")} Publisher:',
+            publisher['name'].upper(),
+            'Time(s):',
+            round((time.time() - start_time_parse), 2)
+        )
 
 
 start_time = time.time()

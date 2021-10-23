@@ -92,6 +92,7 @@ def run():
     sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
     try:
         create_sheet(sheet_title)
+        print(f'CREATE {sheet_title}')
     except HttpError:
         print(f'Sheet with title {sheet_title} exists.')
     for publisher in publishers:

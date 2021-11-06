@@ -165,30 +165,39 @@ def get_img(url: str):
 
 
 def update_price(comic: Comic, exchange_usd: float):
-    # (0.01—3$) + 95 %
-    # (3.01—4.99$) + 65 %
-    # (5—7.99$) + 45 %
-    # (8—9.99$) + 35 %
-    # (10—24.99$) + 25 %
-    # (25—49.99$) + 20 %
-    # (50 - 100$) + 12 %
-    # (100.01—...) + 7 %
-    if comic.price_usd <= 3:
+    # (0.01—2.6$) + 95 %
+    # (2.61—3.4$) + 80 %
+    # (3.41—4.3$) + 75 %
+    # (4.31—5.5$) + 65 %
+    # (5.51—7.99$) + 55 %
+    # (8—12$) + 45 %
+    # (12.1—20$) + 40 %
+    # (20.1—35$) + 30 %
+    # (35.1—49.99$) + 20 %
+    # (50—80$) + 15 %
+    # (80 +) + 9 %
+    if comic.price_usd <= 2.6:
         extra_percent = 95
-    elif 3 < comic.price_usd < 5:
+    elif 2.6 < comic.price_usd < 3.4:
+        extra_percent = 80
+    elif 3.4 < comic.price_usd < 4.3:
+        extra_percent = 75
+    elif 4.3 < comic.price_usd < 5.5:
         extra_percent = 65
-    elif 5 < comic.price_usd < 8:
+    elif 5.5 < comic.price_usd < 8:
+        extra_percent = 55
+    elif 8 < comic.price_usd < 12:
         extra_percent = 45
-    elif 8 < comic.price_usd < 10:
-        extra_percent = 35
-    elif 10 < comic.price_usd < 25:
-        extra_percent = 25
-    elif 25 < comic.price_usd < 50:
+    elif 12 < comic.price_usd < 20:
+        extra_percent = 40
+    elif 20 < comic.price_usd < 35:
+        extra_percent = 30
+    elif 35 < comic.price_usd < 50:
         extra_percent = 20
-    elif 50 < comic.price_usd < 100:
-        extra_percent = 12
+    elif 50 < comic.price_usd < 80:
+        extra_percent = 15
     else:
-        extra_percent = 7
+        extra_percent = 9
     extra_price = (comic.price_usd * extra_percent) / 100
     price_grn = (comic.price_usd + extra_price) * exchange_usd
     comic.price_grn = round(price_grn / 10) * 10

@@ -225,7 +225,11 @@ def update_comic(comic: Comic, parser: HtmlParser = None):
             comic.artist = value
             comic.writer = value
         if key == 'expected_ship_date':
-            comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%d/%m/%y')
+            try:
+                comic.expected_ship_at = datetime.datetime.strptime(value, '%m/%d/%Y').strftime('%d/%m/%y')
+            except ValueError:
+                logging.info(f'Expected Ship Date not specified in comic with url {comic.url}.')
+                continue
 
 
 def is_scanned_comic(comic: Comic) -> bool:
@@ -243,7 +247,8 @@ def is_scanned_comic(comic: Comic) -> bool:
 
 def read_scanned_comics(sub_dir: str = 'full'):
     root_dir = f'{os.getcwd()}/var/comics/scanned/{datetime.datetime.now().strftime("%Y-%m")}'
-    publishers_dirs = ['boom_studios', 'dark_horse', 'dynamite_entertainment', 'idw_publishing', 'image_comics',
+    publishers_dirs = ['other', 'boom_studios', 'dark_horse', 'dynamite_entertainment', 'idw_publishing',
+                       'image_comics',
                        'dc_comics', 'marvel_comics']
     for publisher_dir_name in publishers_dirs:
         publisher_dir_sub_dir = os.path.join(root_dir, publisher_dir_name, sub_dir)

@@ -7,11 +7,24 @@ from json import JSONDecodeError
 import telebot
 from lxml import html
 from lxml.html import HtmlElement
-from typing import List, Optional
+from typing import List, Optional, Generator
 import requests
+
+from spreadsheets import insert_in_sheet
 
 CONFIG = json.load(open('config/config.json'))
 bot = telebot.TeleBot(CONFIG['tel_bot_token'])
+
+PUBLISHERS_PRIORITIES = [
+    'other',
+    'boom_studios',
+    'dark_horse',
+    'dynamite_entertainment',
+    'idw_publishing',
+    'image_comics',
+    'dc_comics',
+    'marvel_comics'
+]
 
 
 class Comic(object):
@@ -46,9 +59,6 @@ class Comic(object):
 
     def scanned_w_img_file_path(self) -> Optional[str]:
         return f'{get_comic_dir(self)}/w_img/{self.id}.json'
-
-    # def scanned_souvenirs_file_path(self) -> Optional[str]:
-    #     return f'{get_comic_dir(self)}/souvenirs/{self.id}.json'
 
 
 class HtmlParser(object):
@@ -245,22 +255,30 @@ def is_scanned_comic(comic: Comic) -> bool:
     return False
 
 
-def read_scanned_comics(sub_dir: str = 'full'):
+def read_scanned_comics(sub_dir: str = 'full') -> Generator[Comic, None, None]:
     root_dir = f'{os.getcwd()}/var/comics/scanned/{datetime.datetime.now().strftime("%Y-%m")}'
-    publishers_dirs = ['other', 'boom_studios', 'dark_horse', 'dynamite_entertainment', 'idw_publishing',
-                       'image_comics',
-                       'dc_comics', 'marvel_comics']
-    for publisher_dir_name in publishers_dirs:
+    for publisher_dir_name in PUBLISHERS_PRIORITIES:
         publisher_dir_sub_dir = os.path.join(root_dir, publisher_dir_name, sub_dir)
-        files = []
-        if not os.path.exists(publisher_dir_sub_dir):
-            yield None
-        else:
+        if os.path.exists(publisher_dir_sub_dir):
+            files = []
             for file in os.listdir(publisher_dir_sub_dir):
                 file_path = os.path.join(publisher_dir_sub_dir, file)
                 if file.endswith('.json') and os.path.isfile(file_path):
                     files.append(file_path)
-            files.sort(key=lambda x: json.load(open(x))['title'])
+            files.sort(key=lambda item: json.load(open(item))['title'])
             for file in files:
                 comic = Comic(json.load(open(file)))
                 yield comic
+
+
+def posted_comic(comic: Comic):
+    send_comic_in_group(comic)
+    logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
+    one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
+               comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
+    insert_in_sheet(datetime.datetime.now().strftime('%Y-%m'), [one_row])
+    save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
+    logging.info(
+        f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'
+    )
+    os.remove(comic.scanned_full_file_path())

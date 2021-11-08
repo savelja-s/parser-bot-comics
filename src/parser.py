@@ -2,15 +2,12 @@ import datetime
 import json
 import time
 import logging
-
+import helper
 from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
-
-from helper import init_log_and_dir, Comic, save_json, get_currency, update_price, is_scanned_comic, update_comic, \
-    HtmlParser
 from spreadsheets import insert_in_sheet, create_sheet
 
-init_log_and_dir()
+helper.init_log_and_dir()
 CONFIG = json.load(open('config/config.json'))
 
 
@@ -30,16 +27,16 @@ def get_comic(comic_block, publisher: str):
         img_url = None
     else:
         img_url = img_url.replace('/small/', '/xlarge/', 1)
-    return Comic({'id': tag_a.get('href').split('/')[2], 'url': CONFIG['site_url'] + tag_a.get('href'),
-                  'title': detail_div.find('div').find('h5').find('a').text.strip(),
-                  'publisher': publisher, 'image_url': img_url})
+    return helper.Comic({'id': tag_a.get('href').split('/')[2], 'url': CONFIG['site_url'] + tag_a.get('href'),
+                         'title': detail_div.find('div').find('h5').find('a').text.strip(),
+                         'publisher': publisher, 'image_url': img_url})
 
 
 def handler_publisher_comics(params: dict, exchange_usd, page=1):
     page_path = params["url"]
     if page != 1:
         page_path += f'/{page}'
-    parser = HtmlParser(page_path, {'ProductsPerPage': '100'})
+    parser = helper.HtmlParser(page_path, {'ProductsPerPage': '100'})
     if parser.find_by_xpath('//div[@id="body"]//div[@class="message-info"]'):
         return
     comic_blocks = parser.find_by_xpath('//ul[@class="thumblist"]/li')
@@ -50,31 +47,25 @@ def handler_publisher_comics(params: dict, exchange_usd, page=1):
         if ' Copy ' in comic.title:
             logging.info(f'`Copy` not ignored. title:{comic.title}')
             continue
-        if is_scanned_comic(comic) is True:
+        if helper.is_scanned_comic(comic) is True:
             logging.info(f'This comic has already been scanned.Id={comic.id}')
             continue
         if comic.image_url is None:
-            save_json(comic, comic.scanned_w_img_file_path())
+            helper.save_json(comic, comic.scanned_w_img_file_path())
             one_row = [comic.publisher, comic.title, comic.id, comic.url, comic.created_at]
             insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', [one_row])
             continue
-        update_comic(comic)
-        # if comic.publisher == 'Marvel Comics':
-        #     pass
-        # elif not comic.writer and not comic.artist:
-        #     save_json(comic, comic.scanned_souvenirs_file_path())
-        #     logging.info(f'Souvenir not ignored.writer:{comic.writer},artist:{comic.artist}')
-        #     continue
-        update_price(comic, exchange_usd)
+        helper.update_comic(comic)
+        helper.update_price(comic, exchange_usd)
         logging.info(f'Save comic with title:{comic.title} and id:{comic.id}')
-        save_json(comic, comic.scanned_full_file_path())
+        helper.save_json(comic, comic.scanned_full_file_path())
     bar.finish()
     handler_publisher_comics(params, exchange_usd, (page + 1))
 
 
 def get_list_publisher():
     publishers = []
-    parser = HtmlParser(CONFIG['site_url'])
+    parser = helper.HtmlParser(CONFIG['site_url'])
     tmp_list_products_links = parser.find_by_xpath("//div[@class='navblock']/ul/li/a[@href]")
     for el_publisher in tmp_list_products_links[0:9]:
         name = el_publisher.text.strip()
@@ -87,7 +78,7 @@ def get_list_publisher():
 
 def run():
     publishers = get_list_publisher()
-    exchange_usd = get_currency()
+    exchange_usd = helper.get_currency()
     sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
     try:
         create_sheet(sheet_title)

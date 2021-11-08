@@ -2,14 +2,36 @@ import datetime
 import logging
 import os
 import time
-
+import helper
+from typing import Generator
 from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
+from spreadsheets import create_sheet
 
-from helper import read_scanned_comics, save_json, send_comic_in_group, init_log_and_dir
-from spreadsheets import create_sheet, insert_in_sheet
+helper.init_log_and_dir()
 
-init_log_and_dir()
+
+def create_full_comic(comic: helper.Comic, parser: helper.HtmlParser, exchange_usd: float) -> str:
+    helper.update_comic(comic, parser)
+    helper.update_price(comic, exchange_usd)
+    path = comic.scanned_full_file_path()
+    helper.save_json(comic, path)
+    return path
+
+
+def read_comics_without_images() -> Generator[helper.Comic, None, None]:
+    exchange_usd = helper.get_currency()
+    for comic in helper.read_scanned_comics('w_img'):
+        parser = helper.HtmlParser(comic.url)
+        img_src = parser.find_one_by_xpath('//div[@class="detailimagecol"]/img').get('src')
+        if img_src.endswith('noimage.jpg'):
+            logging.info(f'Not upload image for comic with id {comic.id} and url {comic.url}.')
+            continue
+        # remove in google spreadsheets with title f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
+        new_path = create_full_comic(comic, parser, exchange_usd)
+        logging.info(f'Uploaded image for comic with id {comic.id} and json move to {new_path}.')
+        os.remove(comic.scanned_w_img_file_path())
+        yield comic
 
 
 def run(limit: int = 10):
@@ -20,21 +42,24 @@ def run(limit: int = 10):
         create_sheet(sheet_title)
     except HttpError:
         print(f'Sheet with title {sheet_title} exists.')
-    for comic in read_scanned_comics('full'):
+    for comic in helper.read_scanned_comics('full'):
         if count == limit:
+            bar.finish()
             return
-        send_comic_in_group(comic)
-        logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
-        one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
-                   comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
-        insert_in_sheet(datetime.datetime.now().strftime('%Y-%m'), [one_row])
-        save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
-        logging.info(
-            f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'
-        )
-        os.remove(comic.scanned_full_file_path())
+        helper.posted_comic(comic)
         count = count + 1
         bar.next()
+
+    if count >= limit:
+        bar.finish()
+        return
+    print('PARSED WITHOUT IMG')
+    for comic_with_upload_img in read_comics_without_images():
+        helper.posted_comic(comic_with_upload_img)
+        count = count + 1
+        bar.next()
+        if count == limit:
+            break
     bar.finish()
 
 

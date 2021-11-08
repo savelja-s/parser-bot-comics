@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 
@@ -67,7 +66,7 @@ def create_sheet(title: str):
 def insert_in_sheet(title: str, values: list):
     return get_sheets_service().spreadsheets().values().append(
         spreadsheetId=CONFIG['spreadsheet_id'],
-        range=f"{title}!A:Z",
-        valueInputOption="USER_ENTERED",
-        body={"majorDimension": "ROWS", "values": values},
+        range=f'{title}!A:Z',
+        valueInputOption='USER_ENTERED',
+        body={'majorDimension': 'ROWS', 'values': values},
     ).execute()

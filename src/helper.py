@@ -271,12 +271,15 @@ def read_scanned_comics(sub_dir: str = 'full') -> Generator[Comic, None, None]:
                 yield comic
 
 
+def prepare_comic(comic: Comic) -> list:
+    return [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
+            comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
+
+
 def posted_comic(comic: Comic):
     send_comic_in_group(comic)
     logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
-    one_row = [comic.publisher, comic.title, comic.id, comic.expected_ship_at, comic.price_usd, comic.price_grn,
-               comic.url, comic.description, comic.writer, comic.artist, comic.image_url, comic.created_at]
-    insert_in_sheet(datetime.datetime.now().strftime('%Y-%m'), [one_row])
+    insert_in_sheet(f"{datetime.datetime.now().strftime('%Y-%m')}_posted", [prepare_comic(comic)])
     save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
     logging.info(
         f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'

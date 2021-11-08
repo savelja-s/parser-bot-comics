@@ -32,6 +32,7 @@ def read_comics_without_images() -> Generator[helper.Comic, None, None]:
         # remove in google spreadsheets with title f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
         new_path = create_full_comic(comic, parser, exchange_usd)
         logging.info(f'Uploaded image for comic with id {comic.id} and json move to {new_path}.')
+        helper.insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_upload_img', [helper.prepare_comic(comic)])
         os.remove(comic.scanned_w_img_file_path())
         yield comic
 

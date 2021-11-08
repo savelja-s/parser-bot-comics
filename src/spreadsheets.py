@@ -1,8 +1,8 @@
 import json
 import os
 
-import httplib2
 import apiclient.discovery
+import httplib2
 from oauth2client.service_account import ServiceAccountCredentials
 
 CREDENTIALS_FILE = os.path.join(os.getcwd(), 'config', 'google_credentials.json')

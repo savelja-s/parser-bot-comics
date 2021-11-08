@@ -3,12 +3,12 @@ import json
 import logging
 import os
 from json import JSONDecodeError
+from typing import List, Optional, Generator
 
+import requests
 import telebot
 from lxml import html
 from lxml.html import HtmlElement
-from typing import List, Optional, Generator
-import requests
 
 from spreadsheets import insert_in_sheet
 

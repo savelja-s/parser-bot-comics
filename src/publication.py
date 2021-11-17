@@ -10,7 +10,7 @@ from progress.bar import IncrementalBar
 import helper
 from spreadsheets import create_sheet
 
-helper.init_log_and_dir()
+helper.init_log_and_dir('publication')
 
 
 def create_full_comic(comic: helper.Comic, parser: helper.HtmlParser, exchange_usd: float) -> str:

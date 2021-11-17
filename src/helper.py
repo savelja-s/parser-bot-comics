@@ -82,11 +82,11 @@ class ComicsEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def init_log_and_dir():
+def init_log_and_dir(process: str):
     os.makedirs(f'{os.getcwd()}/var/log', exist_ok=True)
     os.makedirs(f'{os.getcwd()}/var/comics/scanned', exist_ok=True)
     os.makedirs(f'{os.getcwd()}/var/comics/done', exist_ok=True)
-    logging.basicConfig(filename='var/log/{:%Y-%m}.log'.format(datetime.datetime.now()),
+    logging.basicConfig(filename=f'var/log/{process}' + '_{:%Y-%m}.log'.format(datetime.datetime.now()),
                         filemode='a',
                         format='%(asctime)s %(name)s %(levelname)s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',

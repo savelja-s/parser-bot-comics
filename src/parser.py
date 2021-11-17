@@ -9,29 +9,25 @@ from progress.bar import IncrementalBar
 import helper
 from spreadsheets import insert_in_sheet, create_sheet
 
-helper.init_log_and_dir()
+helper.init_log_and_dir('parser')
 CONFIG = json.load(open('config/config.json'))
 
 
 def get_comic(comic_block, publisher: str):
-    img_block = comic_block.findall('div')
-    img_div = img_block[0]
-    if img_div.get('class') != 'thumbnailborder':
-        logging.error(f'DOM changed on list of comic.')
-        return None
-    detail_div = img_block[1]
-    if detail_div.get('class') != 'detail':
-        logging.error(f'DOM changed on list of comic.')
-        return None
-    tag_a = img_div.find('div').find('div').find('a')
+    tag_a = None
+    title = None
+    for div in comic_block.findall('div'):
+        if div.get('class') == 'thumbnailborder':
+            tag_a = div.find('div').find('div').find('a')
+        if div.get('class') == 'detail':
+            title = div.find('div').find('h5').find('a').text.strip()
     img_url = str(tag_a.find('img').get('src'))
     if 'noimagethumb' in img_url:
         img_url = None
     else:
         img_url = img_url.replace('/small/', '/xlarge/', 1)
     return helper.Comic({'id': tag_a.get('href').split('/')[2], 'url': CONFIG['site_url'] + tag_a.get('href'),
-                         'title': detail_div.find('div').find('h5').find('a').text.strip(),
-                         'publisher': publisher, 'image_url': img_url})
+                         'title': title, 'publisher': publisher, 'image_url': img_url})
 
 
 def handler_publisher_comics(params: dict, exchange_usd, page=1):

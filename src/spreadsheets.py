@@ -19,7 +19,7 @@ def get_http_auth():
 
 
 def get_sheets_service():
-    return apiclient.discovery.build('sheets', 'v4', http=get_http_auth())
+    return apiclient.discovery.build('sheets', 'v4', http=get_http_auth(), cache_discovery=False)
 
 
 def add_permissions(email: str, spreadsheet_id: str):

@@ -279,7 +279,6 @@ def prepare_comic(comic: Comic) -> list:
 def posted_comic(comic: Comic):
     send_comic_in_group(comic)
     logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
-    insert_in_sheet(f"{datetime.datetime.now().strftime('%Y-%m')}_posted", [prepare_comic(comic)])
     save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
     logging.info(
         f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'

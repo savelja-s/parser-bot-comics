@@ -3,6 +3,7 @@ import json
 import logging
 import time
 
+import traceback
 from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
 
@@ -30,7 +31,7 @@ def get_comic(comic_block, publisher: str):
                          'title': title, 'publisher': publisher, 'image_url': img_url})
 
 
-def handler_publisher_comics(params: dict, exchange_usd, page=1):
+def handler_publisher_comics(params: dict, publisher_comics_without_img: list, exchange_usd, page=1):
     page_path = params["url"]
     if page != 1:
         page_path += f'/{page}'
@@ -51,14 +52,14 @@ def handler_publisher_comics(params: dict, exchange_usd, page=1):
         if comic.image_url is None:
             helper.save_json(comic, comic.scanned_w_img_file_path())
             one_row = [comic.publisher, comic.title, comic.id, comic.url, comic.created_at]
-            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', [one_row])
+            publisher_comics_without_img.append(one_row)
             continue
         helper.update_comic(comic)
         helper.update_price(comic, exchange_usd)
         logging.info(f'Save comic with title:{comic.title} and id:{comic.id}')
         helper.save_json(comic, comic.scanned_full_file_path())
     bar.finish()
-    handler_publisher_comics(params, exchange_usd, (page + 1))
+    handler_publisher_comics(params, publisher_comics_without_img, exchange_usd, (page + 1))
 
 
 def get_list_publisher():
@@ -83,15 +84,24 @@ def run():
         print(f'CREATE {sheet_title}')
     except HttpError:
         print(f'Sheet with title {sheet_title} exists.')
-    for publisher in publishers:
-        start_time_parse = time.time()
-        handler_publisher_comics(publisher, exchange_usd)
-        print(
-            f'{datetime.datetime.now().strftime("%Y-%m")} Publisher:',
-            publisher['name'].upper(),
-            'Time(s):',
-            round((time.time() - start_time_parse), 2)
-        )
+    publisher_comics_without_img = []
+    try:
+        for publisher in publishers:
+            start_time_parse = time.time()
+            publisher_comics_without_img = []
+            handler_publisher_comics(publisher, publisher_comics_without_img, exchange_usd)
+            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', publisher_comics_without_img)
+            print(
+                f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} Publisher:',
+                publisher['name'].upper(),
+                'Time(s):',
+                round((time.time() - start_time_parse), 2)
+            )
+    except (Exception, KeyboardInterrupt, TypeError) as e:
+        print('Exception:', e)
+        logging.error(traceback.format_exc())
+        if len(publisher_comics_without_img):
+            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', publisher_comics_without_img)
 
 
 start_time = time.time()

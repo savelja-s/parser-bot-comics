@@ -4,11 +4,12 @@ import os
 import time
 from typing import Generator
 
+import traceback
 from googleapiclient.errors import HttpError
 from progress.bar import IncrementalBar
 
 import helper
-from spreadsheets import create_sheet
+from spreadsheets import create_sheet, insert_in_sheet
 
 helper.init_log_and_dir('publication')
 
@@ -29,7 +30,6 @@ def read_comics_without_images() -> Generator[helper.Comic, None, None]:
         if img_src.endswith('noimage.jpg'):
             logging.info(f'Not upload image for comic with id {comic.id} and url {comic.url}.')
             continue
-        # remove in google spreadsheets with title f'{datetime.datetime.now().strftime("%Y-%m")}_w_img'
         new_path = create_full_comic(comic, parser, exchange_usd)
         logging.info(f'Uploaded image for comic with id {comic.id} and json move to {new_path}.')
         helper.insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_upload_img', [helper.prepare_comic(comic)])
@@ -40,30 +40,40 @@ def read_comics_without_images() -> Generator[helper.Comic, None, None]:
 def run(limit: int = 10):
     count = 0
     bar = IncrementalBar('Send comic in telegram group.', max=limit)
-    sheet_title = datetime.datetime.now().strftime('%Y-%m')
+    sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_posted'
     try:
         create_sheet(sheet_title)
     except HttpError:
         print(f'Sheet with title {sheet_title} exists.')
-    for comic in helper.read_scanned_comics('full'):
-        if count == limit:
+    published_comics = []
+    try:
+        while True:
+            for comic in helper.read_scanned_comics('full'):
+                if count == limit:
+                    bar.finish()
+                    break
+                helper.posted_comic(comic)
+                published_comics.append(helper.prepare_comic(comic))
+                count = count + 1
+                bar.next()
+            if count >= limit:
+                bar.finish()
+                insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_posted', published_comics)
+                break
+            print('PARSED WITHOUT IMG')
+            for comic_with_upload_img in read_comics_without_images():
+                helper.posted_comic(comic_with_upload_img)
+                count = count + 1
+                bar.next()
+                if count == limit:
+                    break
             bar.finish()
-            return
-        helper.posted_comic(comic)
-        count = count + 1
-        bar.next()
-
-    if count >= limit:
-        bar.finish()
-        return
-    print('PARSED WITHOUT IMG')
-    for comic_with_upload_img in read_comics_without_images():
-        helper.posted_comic(comic_with_upload_img)
-        count = count + 1
-        bar.next()
-        if count == limit:
             break
-    bar.finish()
+    except (Exception, KeyboardInterrupt, TypeError) as e:
+        print('Exception:', e)
+        logging.error(traceback.format_exc())
+    if len(published_comics):
+        insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_posted', published_comics)
 
 
 start_time = time.time()
@@ -73,3 +83,4 @@ running_time = time.time() - start_time
 print("--- %s seconds ---" % running_time)
 if running_time / 60 > 1:
     print("--- %s min ---" % (running_time / 60))
+print(f'Date:{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')

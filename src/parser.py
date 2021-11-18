@@ -90,7 +90,6 @@ def run():
             start_time_parse = time.time()
             publisher_comics_without_img = []
             handler_publisher_comics(publisher, publisher_comics_without_img, exchange_usd)
-            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', publisher_comics_without_img)
             print(
                 f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} Publisher:',
                 publisher['name'].upper(),
@@ -100,8 +99,8 @@ def run():
     except (Exception, KeyboardInterrupt, TypeError) as e:
         print('Exception:', e)
         logging.error(traceback.format_exc())
-        if len(publisher_comics_without_img):
-            insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', publisher_comics_without_img)
+    if len(publisher_comics_without_img):
+        insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_w_img', publisher_comics_without_img)
 
 
 start_time = time.time()

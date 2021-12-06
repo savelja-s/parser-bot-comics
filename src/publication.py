@@ -37,7 +37,7 @@ def read_comics_without_images() -> Generator[helper.Comic, None, None]:
         yield comic
 
 
-def run(limit: int = 10):
+def run(limit: int = 15):
     count = 0
     bar = IncrementalBar('Send comic in telegram group.', max=limit)
     sheet_title = f'{datetime.datetime.now().strftime("%Y-%m")}_posted'

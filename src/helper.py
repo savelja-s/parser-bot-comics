@@ -55,10 +55,10 @@ class Comic(object):
         return "<comic: %s >" % attrs
 
     def scanned_full_file_path(self) -> Optional[str]:
-        return f'{get_comic_dir(self)}/full/{self.id}.json'
+        return f'{get_comic_scanned_dir(self)}/full/{self.id}.json'
 
     def scanned_w_img_file_path(self) -> Optional[str]:
-        return f'{get_comic_dir(self)}/w_img/{self.id}.json'
+        return f'{get_comic_scanned_dir(self)}/w_img/{self.id}.json'
 
 
 class HtmlParser(object):
@@ -123,10 +123,16 @@ def get_currency():
     return None
 
 
-def get_comic_dir(comic: Comic):
+def get_comic_scanned_dir(comic: Comic):
     period = datetime.datetime.now().strftime('%Y-%m')
     publisher = comic.publisher.lower().replace('!', '').replace(' ', '_')
     return f'{os.getcwd()}/var/comics/scanned/{period}/{publisher}'
+
+
+def get_comic_path_to_done_file(comic: Comic):
+    period = datetime.datetime.now().strftime('%Y-%m')
+    publisher = comic.publisher.lower().replace('!', '').replace(' ', '_')
+    return f'{os.getcwd()}/var/comics/done/{publisher}/{period}/{comic.id}.json'
 
 
 def save_json(data, file_path: str):
@@ -243,14 +249,11 @@ def update_comic(comic: Comic, parser: HtmlParser = None):
 
 
 def is_scanned_comic(comic: Comic) -> bool:
-    path_comic_dir = get_comic_dir(comic)
     if os.path.exists(comic.scanned_full_file_path()):
         return True
     if os.path.exists(comic.scanned_w_img_file_path()):
         return True
-    if os.path.exists(f'{path_comic_dir}/souvenirs/{comic.id}.json'):
-        return True
-    if os.path.exists(f'{os.getcwd()}/var/comics/done/{comic.id}.json'):
+    if os.path.exists(get_comic_path_to_done_file(comic)):
         return True
     return False
 
@@ -279,7 +282,7 @@ def prepare_comic(comic: Comic) -> list:
 def posted_comic(comic: Comic):
     send_comic_in_group(comic)
     logging.info(f'Send in telegram comic with title:{comic.title} and id:{comic.id}')
-    save_json(comic, f'{os.getcwd()}/var/comics/done/{comic.id}.json')
+    save_json(comic, get_comic_path_to_done_file(comic))
     logging.info(
         f'Insert in google sheet and save in folder `done` comic with title:{comic.title} and id:{comic.id}'
     )

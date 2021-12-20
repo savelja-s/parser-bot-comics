@@ -46,35 +46,38 @@ def run(limit: int = 15):
     except HttpError:
         print(f'Sheet with title {sheet_title} exists.')
     published_comics = []
-    try:
-        while True:
-            for comic in helper.read_scanned_comics('full'):
-                if count == limit:
-                    bar.finish()
-                    break
-                helper.posted_comic(comic)
-                published_comics.append(helper.prepare_comic(comic))
-                count = count + 1
-                bar.next()
-            if count >= limit:
-                bar.finish()
-                insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_posted', published_comics)
+    for comic in helper.read_scanned_comics('full'):
+        try:
+            if count == limit:
                 break
-            print('PARSED WITHOUT IMG')
-            for comic_with_upload_img in read_comics_without_images():
-                helper.posted_comic(comic_with_upload_img)
-                count = count + 1
-                bar.next()
-                if count == limit:
-                    break
-            bar.finish()
-            break
-    except (Exception, KeyboardInterrupt, TypeError) as e:
-        print('Exception:', e)
-        logging.error(traceback.format_exc())
+            helper.posted_comic(comic)
+            published_comics.append(helper.prepare_comic(comic))
+            count = count + 1
+            bar.next()
+        except (Exception, KeyboardInterrupt, TypeError) as e:
+            print('Exception:', e)
+            logging.error(traceback.format_exc())
+            continue
+    if count >= limit:
+        bar.finish()
+        insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_posted', published_comics)
+        print(f'Published {count}')
+        return
+    print('PARSED WITHOUT IMG')
+    for comic_for_upload_img in read_comics_without_images():
+        try:
+            helper.posted_comic(comic_for_upload_img)
+            count = count + 1
+            bar.next()
+            if count == limit:
+                break
+        except (Exception, KeyboardInterrupt, TypeError) as e:
+            print('Exception:', e)
+            logging.error(traceback.format_exc())
+            continue
+    bar.finish()
     if len(published_comics):
         insert_in_sheet(f'{datetime.datetime.now().strftime("%Y-%m")}_posted', published_comics)
-
 
 start_time = time.time()
 run()
